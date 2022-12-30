@@ -1,24 +1,25 @@
 package calculator
 
+import java.util.Stack
+
+fun String.isDigit(): Boolean {
+    return this.matches("""-?\d+""".toRegex())
+}
+
 class Calculator {
     val variables = mutableMapOf<String, Int>()
 
     fun operation(operator: String): String {
         return when (operator.first()) {
             '+' -> "+"
-            else -> {
+            '-' -> {
                 if (operator.length % 2 == 0) "+"
                 else "-"
             }
+
+            '*' -> "*"
+            else -> "/"
         }
-    }
-
-    fun add(a: Int, b: Int): Int {
-        return a + b
-    }
-
-    fun subtract(a: Int, b: Int): Int {
-        return a - b
     }
 
     fun variable(variable: String): Boolean {
@@ -29,30 +30,101 @@ class Calculator {
         return variables[variable]!!
     }
 
-    fun makeOperations(input: String) {
-        val res = input.split(" ")
-        var result = if (variable(res[0])) variableToDigit(res[0]) else res[0].toInt()
 
-        for (i in 1..res.lastIndex step 2) {
-            when (operation(res[i])) {
-                "+" -> {
-                    result = if (variable(res[i + 1])) {
-                        add(result, variableToDigit(res[i + 1]))
-                    } else {
-                        add(result, res[i + 1].toInt())
+    fun changeInfixToPostfix(list: MutableList<String>): MutableList<String> {
+        val result = mutableListOf<String>()
+        val operators = Stack<String>()
+        for (i in list) {
+            when {
+                (variable(i)) -> result.add(variableToDigit(i).toString())
+                i.isDigit() -> result.add(i)
+                i == "(" -> {
+                    operators.push(i)
+                }
+
+                i == ")" -> {
+                    if (operators.isEmpty()) throw Exception()
+                    for (j in operators.indices) {
+                        if (operators.last() != "(") {
+                            result.add(operators.pop())
+                        } else {
+                            operators.pop()
+                            break
+                        }
                     }
                 }
 
-                "-" -> {
-                    result = if (variable(res[i + 1])) {
-                        subtract(result, variableToDigit(res[i + 1]))
+                i == "*" || i == "/" -> {
+                    if (operators.isEmpty() || operators.last() == "(") {
+                        operators.push(i)
                     } else {
-                        subtract(result, res[i + 1].toInt())
+                        for (j in operators.indices) {
+                            if (operators.last() == "*" || operators.last() == "/") {
+                                result.add(operators.pop())
+                            }
+                        }
+                        operators.push(i)
+                        //operators.forEach { if (it != "(") result.add(operators.pop())}
+                    }
+                }
+
+                i == "+" || i == "-" -> {
+                    if (operators.isEmpty() || operators.last() == "(") {
+                        operators.push(i)
+                    } else {
+                        for (j in operators.indices) {
+                            if (operators.last() != "(") {
+                                result.add(operators.pop())
+                            }
+                        }
+                        operators.push(i)
                     }
                 }
             }
         }
-        println(result)
+        while (operators.isNotEmpty()) result.add(operators.pop())
+        if (result.contains("(") || result.contains(")")) throw Exception()
+
+        return result
+    }
+
+    fun calculateExpression(input: String) {
+        if (input.matches(""".*(\*{2,}|/{2,}).*""".toRegex())) throw Exception()
+        val res = input.split(" ").toMutableList()
+        res.removeAll { it == " " || it == "" }
+
+        if (res.count { it == "(" } != res.count { it == ")" }) throw Exception()
+
+        val postFix = changeInfixToPostfix(res)
+        val finalResult = Stack<Int>()
+        for (i in postFix) {
+            if (i.isDigit()) {
+                finalResult.push(i.toInt())
+            } else {
+                when (i) {
+                    "+" -> {
+                        finalResult.push(finalResult.pop() + finalResult.pop())
+                    }
+
+                    "-" -> {
+                        val a = finalResult.pop()
+                        val b = finalResult.pop()
+                        finalResult.push(b - a)
+                    }
+
+                    "/" -> {
+                        val a = finalResult.pop()
+                        val b = finalResult.pop()
+                        finalResult.push(b / a)
+                    }
+
+                    "*" -> {
+                        finalResult.push(finalResult.pop() * finalResult.pop())
+                    }
+                }
+            }
+        }
+        println(finalResult.pop())
     }
 }
 
@@ -77,9 +149,11 @@ fun main() {
                 println("Unknown command")
             }
 
-            input.matches("""(\d+|[a-zA-Z]+)\s+(\++|-+)\s+(\d+|[a-zA-Z]+).*""".toRegex()) -> {
+            input.matches("""(\(+)?(\d+|[a-zA-Z]+)\s+(\++|-+|/+|\*+)\s+\(*(\d+|[a-zA-Z]+)(\)+)?.*""".toRegex()) -> {
                 try {
-                    calc.makeOperations(input)
+                    val s = input.replace("""\++""".toRegex(), "+")
+                    println(s)
+                    calc.calculateExpression(input)
                 } catch (e: Exception) {
                     println("Invalid expression")
                 }
@@ -98,10 +172,10 @@ fun main() {
                 if (!variables.first().matches("""[a-zA-Z]+""".toRegex())) {
                     println("Invalid identifier")
                 }
-                if (!variables.last().matches("""(\d+|[a-zA-Z]+)""".toRegex()) || variables.size > 2) {
+                if (!variables.last().matches("""(-?\d+|[a-zA-Z]+)""".toRegex()) || variables.size > 2) {
                     println("Invalid assignment")
                 }
-                if (variables[1].matches("""\d+""".toRegex())) {
+                if (variables[1].isDigit()) {
                     calc.variables[variables[0]] = variables[1].toInt()
                 } else if (!calc.variable(variables[1])) {
                     println("Unknown variable")
