@@ -9,19 +9,6 @@ fun String.isDigit(): Boolean {
 class Calculator {
     val variables = mutableMapOf<String, Int>()
 
-    fun operation(operator: String): String {
-        return when (operator.first()) {
-            '+' -> "+"
-            '-' -> {
-                if (operator.length % 2 == 0) "+"
-                else "-"
-            }
-
-            '*' -> "*"
-            else -> "/"
-        }
-    }
-
     fun variable(variable: String): Boolean {
         return variables.containsKey(variable)
     }
@@ -31,7 +18,7 @@ class Calculator {
     }
 
 
-    fun changeInfixToPostfix(list: MutableList<String>): MutableList<String> {
+    private fun changeInfixToPostfix(list: MutableList<String>): MutableList<String> {
         val result = mutableListOf<String>()
         val operators = Stack<String>()
         for (i in list) {
@@ -90,9 +77,11 @@ class Calculator {
 
     fun calculateExpression(input: String) {
         if (input.matches(""".*(\*{2,}|/{2,}).*""".toRegex())) throw Exception()
-        val res = input.split(" ").toMutableList()
+        val res = mutableListOf<String>()
+        input.split(" ").toMutableList().forEach {
+            if (!it.isDigit()) it.split("").forEach { res.add(it) } else res.add(it)
+        }
         res.removeAll { it == " " || it == "" }
-
         if (res.count { it == "(" } != res.count { it == ")" }) throw Exception()
 
         val postFix = changeInfixToPostfix(res)
@@ -152,8 +141,10 @@ fun main() {
             input.matches("""(\(+)?(\d+|[a-zA-Z]+)\s+(\++|-+|/+|\*+)\s+\(*(\d+|[a-zA-Z]+)(\)+)?.*""".toRegex()) -> {
                 try {
                     val s = input.replace("""\++""".toRegex(), "+")
-                    println(s)
-                    calc.calculateExpression(input)
+                        .replace("""(--)+""".toRegex(), "+")
+                        .replace("""(-\+|\+-)""".toRegex(), "-")
+
+                    calc.calculateExpression(s)
                 } catch (e: Exception) {
                     println("Invalid expression")
                 }
