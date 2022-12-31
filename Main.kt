@@ -1,5 +1,6 @@
 package calculator
 
+import java.math.BigInteger
 import java.util.Stack
 
 fun String.isDigit(): Boolean {
@@ -7,16 +8,15 @@ fun String.isDigit(): Boolean {
 }
 
 class Calculator {
-    val variables = mutableMapOf<String, Int>()
+    val variables = mutableMapOf<String, BigInteger>()
 
     fun variable(variable: String): Boolean {
         return variables.containsKey(variable)
     }
 
-    fun variableToDigit(variable: String): Int {
+    fun variableToDigit(variable: String): BigInteger {
         return variables[variable]!!
     }
-
 
     private fun changeInfixToPostfix(list: MutableList<String>): MutableList<String> {
         val result = mutableListOf<String>()
@@ -79,16 +79,17 @@ class Calculator {
         if (input.matches(""".*(\*{2,}|/{2,}).*""".toRegex())) throw Exception()
         val res = mutableListOf<String>()
         input.split(" ").toMutableList().forEach {
-            if (!it.isDigit()) it.split("").forEach { res.add(it) } else res.add(it)
+            if (!it.isDigit()) it.split("""((?<=[()])|(?=[()]))""".toRegex()).forEach { res.add(it) } else res.add(it)
         }
         res.removeAll { it == " " || it == "" }
         if (res.count { it == "(" } != res.count { it == ")" }) throw Exception()
 
+
         val postFix = changeInfixToPostfix(res)
-        val finalResult = Stack<Int>()
+        val finalResult = Stack<BigInteger>()
         for (i in postFix) {
             if (i.isDigit()) {
-                finalResult.push(i.toInt())
+                finalResult.push(i.toBigInteger())
             } else {
                 when (i) {
                     "+" -> {
@@ -167,7 +168,7 @@ fun main() {
                     println("Invalid assignment")
                 }
                 if (variables[1].isDigit()) {
-                    calc.variables[variables[0]] = variables[1].toInt()
+                    calc.variables[variables[0]] = variables[1].toBigInteger()
                 } else if (!calc.variable(variables[1])) {
                     println("Unknown variable")
                 } else {
